@@ -2,14 +2,13 @@
 
 Código-fonte do Pixel.
 
-## Conteúdo previsto
+## Estrutura
 
-- **Raspberry Pi 4**
-  - Controle do display MHS e renderização das expressões faciais;
-  - Cliente MQTT para receber as emoções enviadas pelo ESP32;
-  - Gerenciador de estados emocionais;
-  - Módulos de inteligência artificial (linguagem natural).
-- **ESP32**
-  - Firmware de leitura dos sensores de toque capacitivo;
-  - Leitura e interpretação do giroscópio;
-  - Conversão dos dados em emoções e publicação via MQTT.
+```
+programacao/
+├── raspberry/   # Código do Raspberry Pi 4 (display, expressões, MQTT e IA)
+└── esp32/       # Firmware do ESP32 (sensores capacitivos, giroscópio e MQTT)
+```
+
+- **[`raspberry/`](raspberry/)**: controle do display MHS, renderização das expressões, cliente MQTT, gerenciador de emoções e módulos de inteligência artificial (linguagem natural).
+- **[`esp32/`](esp32/)**: leitura dos sensores de toque capacitivo e do giroscópio, conversão dos dados em emoções e publicação via MQTT.
