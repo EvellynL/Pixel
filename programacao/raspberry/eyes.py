@@ -3,7 +3,7 @@
 Mostra a emocao "normal" o tempo todo. Quando o ESP32 publica "love" ou
 "angry" no topico MQTT "emocao", troca para essa emocao por alguns
 segundos e depois volta ao normal. Tocar na tela (display MHS com touch)
-TOUCHES_NEEDED vezes ou mais dentro de TOUCH_WINDOW segundos mostra "furious".
+mostra "furious" (TOUCHES_NEEDED toques dentro de TOUCH_WINDOW segundos).
 """
 import math
 import queue
@@ -28,7 +28,7 @@ MOOD_DEFAULT = "normal"
 MQTT_MOODS = ("love", "angry")  # emocoes aceitas vindas do ESP32
 TOUCH_MOOD = "furious"  # emocao mostrada ao tocar na tela
 MOOD_DURATION = 5.0  # segundos mostrando a emocao recebida antes de voltar ao normal
-TOUCHES_NEEDED = 3  # numero de toques na tela para mostrar a emocao
+TOUCHES_NEEDED = 1  # numero de toques na tela para mostrar a emocao
 TOUCH_WINDOW = 2.0  # segundos para contar os toques
 TOUCH_DEBOUNCE = 0.15  # toques mais proximos que isso contam como um so
 
