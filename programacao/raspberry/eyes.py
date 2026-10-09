@@ -1,7 +1,7 @@
 """Olhos animados estilo OLED para display 480x320 (Raspberry Pi).
 
 Mostra a emocao "normal" o tempo todo. Quando o ESP32 publica "love" ou
-"furious" no topico MQTT "emocao", troca para essa emocao por alguns
+"angry" no topico MQTT "emocao", troca para essa emocao por alguns
 segundos e depois volta ao normal. Tocar na tela (display MHS com touch)
 TOUCHES_NEEDED vezes ou mais dentro de TOUCH_WINDOW segundos mostra "furious".
 """
@@ -25,7 +25,7 @@ MQTT_PORT = 1883
 MQTT_TOPIC = "emocao"
 
 MOOD_DEFAULT = "normal"
-MQTT_MOODS = ("love", "furious")  # emocoes aceitas vindas do ESP32
+MQTT_MOODS = ("love", "angry")  # emocoes aceitas vindas do ESP32
 TOUCH_MOOD = "furious"  # emocao mostrada ao tocar na tela
 MOOD_DURATION = 5.0  # segundos mostrando a emocao recebida antes de voltar ao normal
 TOUCHES_NEEDED = 3  # numero de toques na tela para mostrar a emocao
@@ -303,13 +303,13 @@ def main():
                     continue
                 touches.clear()
                 mood = TOUCH_MOOD
-            if mood in MQTT_MOODS:
-                print(f"Emocao recebida: {mood}")
-                if mood != eyes.name:
-                    eyes.set_mood(mood)
-                back_to_default = time.time() + MOOD_DURATION  # renova o tempo
-            else:
+            elif mood not in MQTT_MOODS:
                 print(f"Emocao ignorada: {mood!r}")
+                continue
+            print(f"Emocao recebida: {mood}")
+            if mood != eyes.name:
+                eyes.set_mood(mood)
+            back_to_default = time.time() + MOOD_DURATION  # renova o tempo
 
         if back_to_default is not None and time.time() > back_to_default:
             eyes.set_mood(MOOD_DEFAULT)
