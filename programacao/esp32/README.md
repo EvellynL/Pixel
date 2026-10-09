@@ -9,12 +9,12 @@ Lê um sensor de toque capacitivo (ex.: TTP223), conta os toques de uma sequênc
 | Toques na sequência | Mensagem publicada | Quando é enviada |
 |---|---|---|
 | Exatamente 3 | `love` | Ao fim da sequência |
-| Mais de 10 | `angry` | No 11º toque, na hora |
+| Mais de 10 | `furious` | No 11º toque, na hora |
 | Outros valores | — | Nada é enviado |
 
 Uma sequência termina quando o sensor fica **1,5 s** sem ser tocado. A mensagem é texto puro (ex.: `love`), sem JSON.
 
-Os valores ficam no topo de [`src/main.cpp`](src/main.cpp) e podem ser ajustados: `PINO_TOQUE`, `TOQUES_LOVE`, `TOQUES_ANGRY`, `FIM_SEQUENCIA_MS` e `DEBOUNCE_MS`.
+Os valores ficam no topo de [`src/main.cpp`](src/main.cpp) e podem ser ajustados: `PINO_TOQUE`, `TOQUES_LOVE`, `TOQUES_FURIOUS`, `FIM_SEQUENCIA_MS` e `DEBOUNCE_MS`.
 
 ## Ligação
 
@@ -59,7 +59,7 @@ sudo systemctl restart mosquitto
    mosquitto_sub -h localhost -t emocao -v
    ```
 
-3. Toque 3 vezes no sensor e espere 1,5 s: deve aparecer `emocao love`. Toque mais de 10 vezes seguidas: deve aparecer `emocao angry`.
+3. Toque 3 vezes no sensor e espere 1,5 s: deve aparecer `emocao love`. Toque mais de 10 vezes seguidas: deve aparecer `emocao furious`.
 
 ## Próximos passos
 

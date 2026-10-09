@@ -1,12 +1,28 @@
-"""Olhos animados estilo OLED para display 480x320 (Raspberry Pi)."""
+"""Olhos animados estilo OLED para display 480x320 (Raspberry Pi).
+
+Mostra a emocao "normal" o tempo todo. Quando o ESP32 publica "love" ou
+"furious" no topico MQTT "emocao", troca para essa emocao por alguns
+segundos e depois volta ao normal.
+"""
 import math
+import queue
 import random
 import time
 
+import paho.mqtt.client as mqtt
 import pygame
 
 W, H = 480, 320
 FPS = 30
+
+# MQTT (o broker Mosquitto roda no proprio Raspberry Pi)
+MQTT_HOST = "localhost"
+MQTT_PORT = 1883
+MQTT_TOPIC = "emocao"
+
+MOOD_DEFAULT = "normal"
+MQTT_MOODS = ("love", "furious")  # emocoes aceitas vindas do ESP32
+MOOD_DURATION = 8.0  # segundos mostrando a emocao recebida antes de voltar ao normal
 
 BG_DEFAULT = (0, 0, 0)
 FG_DEFAULT = (0, 220, 255)  # cor padrao dos olhos (ciano)
@@ -197,18 +213,41 @@ class Eyes:
                 pygame.draw.ellipse(surf, bg, (rect.left - 6, rect.bottom - cut, rect.w + 12, h))
 
 
+def start_mqtt(inbox):
+    """Assina o topico de emocoes. As mensagens recebidas vao para a fila
+    `inbox`, lida pelo loop principal (o paho roda em outra thread)."""
+    try:  # paho-mqtt 2.x
+        client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+    except AttributeError:  # paho-mqtt 1.x
+        client = mqtt.Client()
+
+    def on_connect(client, userdata, *args):
+        print(f"MQTT conectado a {MQTT_HOST}:{MQTT_PORT}, assinando '{MQTT_TOPIC}'")
+        client.subscribe(MQTT_TOPIC)  # (re)assina a cada conexao
+
+    def on_message(client, userdata, msg):
+        inbox.put(msg.payload.decode("utf-8", errors="ignore").strip().lower())
+
+    client.on_connect = on_connect
+    client.on_message = on_message
+    client.reconnect_delay_set(min_delay=1, max_delay=10)
+    # connect_async + loop_start: nao trava a animacao se o broker cair
+    client.connect_async(MQTT_HOST, MQTT_PORT)
+    client.loop_start()
+    return client
+
+
 def main():
     pygame.init()
     screen = pygame.display.set_mode((W, H), pygame.FULLSCREEN)
     pygame.mouse.set_visible(False)
     clock = pygame.time.Clock()
     eyes = Eyes()
-    names = list(MOODS)
+    eyes.set_mood(MOOD_DEFAULT)
 
-    def sorteia():
-        eyes.set_mood(random.choice([n for n in names if n != eyes.name]))
-
-    next_mood = time.time() + 8
+    inbox = queue.Queue()
+    client = start_mqtt(inbox)
+    back_to_default = None  # momento de voltar ao normal
 
     running = True
     while running:
@@ -218,18 +257,27 @@ def main():
                 running = False
             elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_ESCAPE:
                 running = False
-            elif ev.type == pygame.MOUSEBUTTONDOWN:  # toque na tela troca o humor
-                sorteia()
-                next_mood = time.time() + 8
 
-        if time.time() > next_mood:
-            sorteia()
-            next_mood = time.time() + random.uniform(7, 13)
+        while not inbox.empty():
+            mood = inbox.get()
+            if mood in MQTT_MOODS:
+                print(f"Emocao recebida: {mood}")
+                if mood != eyes.name:
+                    eyes.set_mood(mood)
+                back_to_default = time.time() + MOOD_DURATION  # renova o tempo
+            else:
+                print(f"Emocao ignorada: {mood!r}")
+
+        if back_to_default is not None and time.time() > back_to_default:
+            eyes.set_mood(MOOD_DEFAULT)
+            back_to_default = None
 
         eyes.update(dt)
         eyes.draw(screen)
         pygame.display.flip()
 
+    client.loop_stop()
+    client.disconnect()
     pygame.quit()
 
 

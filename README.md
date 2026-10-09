@@ -132,7 +132,7 @@ O ESP32 publica o nome da emoção como texto puro. Já implementado em [`progra
 | Estímulo | Mensagem |
 |---|---|
 | 3 toques no sensor capacitivo | `love` |
-| Mais de 10 toques seguidos | `angry` |
+| Mais de 10 toques seguidos | `furious` |
 
 > Os nomes dos tópicos e o formato das mensagens são uma proposta inicial e podem ser ajustados durante o desenvolvimento.
 
