@@ -61,7 +61,7 @@ O sistema é dividido em dois "cérebros":
 │  └────────────────────────┘  │                    │  └─────────────┬──────────────┘  │
 │  ┌────────────────────────┐  │   MQTT (Wi-Fi)     │                │                 │
 │  │ Giroscópio / IMU       │──┤ ─────────────────▶ │  ┌─────────────▼──────────────┐  │
-│  └────────────────────────┘  │  pixel/emocao      │  │ Gerenciador de emoções     │  │
+│  └────────────────────────┘  │  emocao            │  │ Gerenciador de emoções     │  │
 │  ┌────────────────────────┐  │  pixel/sensores/…  │  └─────────────┬──────────────┘  │
 │  │ Lógica sensor → emoção │  │                    │                │                 │
 │  └────────────────────────┘  │                    │  ┌─────────────▼──────────────┐  │
@@ -120,21 +120,19 @@ A comunicação entre o ESP32 e o Raspberry Pi 4 é feita pelo protocolo **MQTT*
 
 | Tópico | Publicador | Assinante | Descrição |
 |---|---|---|---|
-| `pixel/emocao` | ESP32 | Raspberry Pi | Emoção calculada a partir dos sensores |
+| `emocao` | ESP32 | Raspberry Pi | Emoção calculada a partir dos sensores (texto puro, ex.: `love`) |
 | `pixel/sensores/toque` | ESP32 | Raspberry Pi | Eventos de toque (para depuração e IA) |
 | `pixel/sensores/giroscopio` | ESP32 | Raspberry Pi | Leituras ou eventos de movimento |
 | `pixel/status` | ESP32 / RPi | Ambos | Estado de conexão (*online*/*offline*) |
 
-### Exemplo de mensagem (`pixel/emocao`)
+### Mensagens do tópico `emocao`
 
-```json
-{
-  "emocao": "feliz",
-  "intensidade": 0.8,
-  "origem": "toque",
-  "timestamp": 1730000000
-}
-```
+O ESP32 publica o nome da emoção como texto puro. Já implementado em [`programacao/esp32/`](programacao/esp32/):
+
+| Estímulo | Mensagem |
+|---|---|
+| 3 toques no sensor capacitivo | `love` |
+| Mais de 10 toques seguidos | `angry` |
 
 > Os nomes dos tópicos e o formato das mensagens são uma proposta inicial e podem ser ajustados durante o desenvolvimento.
 
@@ -211,13 +209,13 @@ sudo systemctl enable --now mosquitto
 Em um terminal, assine o tópico de emoções:
 
 ```bash
-mosquitto_sub -h localhost -t "pixel/emocao"
+mosquitto_sub -h localhost -t "emocao"
 ```
 
 Em outro, publique uma mensagem de teste:
 
 ```bash
-mosquitto_pub -h localhost -t "pixel/emocao" -m '{"emocao": "feliz"}'
+mosquitto_pub -h localhost -t "emocao" -m "love"
 ```
 
 ---
