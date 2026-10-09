@@ -3,7 +3,7 @@
 Mostra a emocao "normal" o tempo todo. Quando o ESP32 publica "love" ou
 "furious" no topico MQTT "emocao", troca para essa emocao por alguns
 segundos e depois volta ao normal. Tocar na tela (display MHS com touch)
-mostra "furious".
+TOUCHES_NEEDED vezes ou mais dentro de TOUCH_WINDOW segundos mostra "furious".
 """
 import math
 import queue
@@ -12,6 +12,9 @@ import time
 
 import paho.mqtt.client as mqtt
 import pygame
+
+import threading
+from evdev import InputDevice, ecodes, list_devices
 
 W, H = 480, 320
 FPS = 30
@@ -24,7 +27,12 @@ MQTT_TOPIC = "emocao"
 MOOD_DEFAULT = "normal"
 MQTT_MOODS = ("love", "furious")  # emocoes aceitas vindas do ESP32
 TOUCH_MOOD = "furious"  # emocao mostrada ao tocar na tela
-MOOD_DURATION = 8.0  # segundos mostrando a emocao recebida antes de voltar ao normal
+MOOD_DURATION = 5.0  # segundos mostrando a emocao recebida antes de voltar ao normal
+TOUCHES_NEEDED = 3  # numero de toques na tela para mostrar a emocao
+TOUCH_WINDOW = 2.0  # segundos para contar os toques
+TOUCH_DEBOUNCE = 0.15  # toques mais proximos que isso contam como um so
+
+TOUCH = object()  # marca um toque na fila (nao confunde com mensagens do MQTT)
 
 BG_DEFAULT = (0, 0, 0)
 FG_DEFAULT = (0, 220, 255)  # cor padrao dos olhos (ciano)
@@ -214,6 +222,23 @@ class Eyes:
                 cut = h * c["happy"]
                 pygame.draw.ellipse(surf, bg, (rect.left - 6, rect.bottom - cut, rect.w + 12, h))
 
+def start_touch(inbox):
+    """Le o touch ADS7846 direto do kernel, em outra thread."""
+    def run():
+        for path in list_devices():
+            dev = InputDevice(path)
+            if "ADS7846" in dev.name:
+                break
+        else:
+            print("Touch ADS7846 nao encontrado")
+            return
+        print(f"Touch encontrado em {dev.path}")
+        for ev in dev.read_loop():
+            # BTN_TOUCH = 1 -> dedo encostou na tela
+            if ev.type == ecodes.EV_KEY and ev.code == ecodes.BTN_TOUCH and ev.value == 1:
+                inbox.put(TOUCH)
+
+    threading.Thread(target=run, daemon=True).start()
 
 def start_mqtt(inbox):
     """Assina o topico de emocoes. As mensagens recebidas vao para a fila
@@ -249,7 +274,9 @@ def main():
 
     inbox = queue.Queue()
     client = start_mqtt(inbox)
+    start_touch(inbox)
     back_to_default = None  # momento de voltar ao normal
+    touches = []  # horarios dos toques recentes na tela
 
     running = True
     while running:
@@ -260,10 +287,22 @@ def main():
             elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_ESCAPE:
                 running = False
             elif ev.type == pygame.MOUSEBUTTONDOWN:  # toque na tela
-                inbox.put(TOUCH_MOOD)
+                inbox.put(TOUCH)
 
         while not inbox.empty():
             mood = inbox.get()
+            if mood is TOUCH:
+                now = time.time()
+                # o mesmo toque pode chegar pelo evdev e pelo pygame
+                if touches and now - touches[-1] < TOUCH_DEBOUNCE:
+                    continue
+                touches = [t for t in touches if now - t <= TOUCH_WINDOW]
+                touches.append(now)
+                print(f"Toque {len(touches)}/{TOUCHES_NEEDED}")
+                if len(touches) < TOUCHES_NEEDED:
+                    continue
+                touches.clear()
+                mood = TOUCH_MOOD
             if mood in MQTT_MOODS:
                 print(f"Emocao recebida: {mood}")
                 if mood != eyes.name:
