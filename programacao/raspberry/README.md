@@ -8,9 +8,10 @@ Desenha os olhos no display MHS (480×320) e assina o tópico MQTT **`emocao`** 
 
 - O display mostra a emoção **`normal`** o tempo todo.
 - Quando o ESP32 publica **`love`** ou **`furious`**, os olhos mudam para essa emoção por **8 segundos** e depois voltam ao normal. Se a mesma emoção chegar de novo nesse período, o tempo recomeça.
+- **Tocar na tela** (display MHS com touch) também mostra **`furious`** pelo mesmo tempo.
 - Qualquer outra mensagem é ignorada. As outras emoções (`tired`, `angry`, `happy`, `wide`) continuam definidas em `MOODS`, mas não são usadas por enquanto.
 
-As configurações ficam no topo do arquivo: `MQTT_HOST`, `MQTT_PORT`, `MQTT_TOPIC`, `MQTT_MOODS` e `MOOD_DURATION`.
+As configurações ficam no topo do arquivo: `MQTT_HOST`, `MQTT_PORT`, `MQTT_TOPIC`, `MQTT_MOODS`, `TOUCH_MOOD` e `MOOD_DURATION`.
 
 ### Dependências
 

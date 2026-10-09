@@ -2,7 +2,8 @@
 
 Mostra a emocao "normal" o tempo todo. Quando o ESP32 publica "love" ou
 "furious" no topico MQTT "emocao", troca para essa emocao por alguns
-segundos e depois volta ao normal.
+segundos e depois volta ao normal. Tocar na tela (display MHS com touch)
+mostra "furious".
 """
 import math
 import queue
@@ -22,6 +23,7 @@ MQTT_TOPIC = "emocao"
 
 MOOD_DEFAULT = "normal"
 MQTT_MOODS = ("love", "furious")  # emocoes aceitas vindas do ESP32
+TOUCH_MOOD = "furious"  # emocao mostrada ao tocar na tela
 MOOD_DURATION = 8.0  # segundos mostrando a emocao recebida antes de voltar ao normal
 
 BG_DEFAULT = (0, 0, 0)
@@ -257,6 +259,8 @@ def main():
                 running = False
             elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_ESCAPE:
                 running = False
+            elif ev.type == pygame.MOUSEBUTTONDOWN:  # toque na tela
+                inbox.put(TOUCH_MOOD)
 
         while not inbox.empty():
             mood = inbox.get()
