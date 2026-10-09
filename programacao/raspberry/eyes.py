@@ -3,7 +3,7 @@ import math
 import random
 import time
 
-import pygames
+import pygame
 
 W, H = 480, 320
 FPS = 30
