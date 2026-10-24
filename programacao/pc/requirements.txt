@@ -1,4 +1,4 @@
-anthropic>=2.3
+google-genai>=2.33
 faster-whisper>=1.2
 piper-tts>=1.8
 sounddevice>=0.5

@@ -1,7 +1,7 @@
 """Assistente de voz do Pixel (roda no PC).
 
 Aperte Enter para começar a falar e Enter de novo para terminar. A fala é
-transcrita no próprio PC (faster-whisper), enviada ao Claude, e a resposta é
+transcrita no próprio PC (faster-whisper), enviada ao Gemini, e a resposta é
 falada em voz alta (Piper).
 
 Uso:
@@ -13,16 +13,18 @@ import argparse
 import sys
 from pathlib import Path
 
-import anthropic
 import numpy as np
 import sounddevice as sd
 from faster_whisper import WhisperModel
+from google import genai
+from google.genai import errors, types
 from piper import PiperVoice
 from piper.download_voices import download_voice
 
 # ---------- Configuração ----------
-MODELO_CLAUDE = "claude-opus-5-5"
-ESFORCO = "low"  # "low" deixa a resposta mais rápida, bom para conversa
+# Apelido do Google que sempre aponta para o modelo Flash mais recente
+# (rápido e disponível no plano gratuito)
+MODELO_GEMINI = "gemini-flash-latest"
 
 WHISPER_MODELO = "small"  # tiny, base, small, medium... (maior = entende melhor, mais lento)
 WHISPER_TAXA = 16000  # o Whisper trabalha com áudio a 16 kHz
@@ -82,44 +84,29 @@ def transcrever(whisper, audio):
     return " ".join(s.text.strip() for s in segmentos).strip()
 
 
-def perguntar(client, historico, texto):
-    """Envia a fala ao Claude e devolve o texto da resposta (ou None se falhar)."""
-    historico.append({"role": "user", "content": texto})
+def perguntar(chat, texto):
+    """Envia a fala ao Gemini e devolve o texto da resposta (ou None se falhar).
+    O objeto `chat` guarda o histórico da conversa sozinho."""
     try:
-        resp = client.beta.messages.create(
-            model=MODELO_CLAUDE,
-            max_tokens=4096,
-            system=SYSTEM,
-            messages=historico,
-            output_config={"effort": ESFORCO},
-            # Se o modelo recusar o pedido, outro modelo tenta responder
-            betas=["server-side-fallback-2026-07-01"],
-            fallbacks="default",
-        )
-    except anthropic.AuthenticationError:
-        historico.pop()
-        print("❌ Chave da API inválida ou ausente. Configure a variável ANTHROPIC_API_KEY.")
+        resp = chat.send_message(texto)
+    except errors.ClientError as e:
+        if e.code == 429:
+            print("❌ Limite do plano gratuito atingido. Espere um pouco e tente de novo.")
+        elif e.code in (400, 401, 403):
+            print(f"❌ Erro da API ({e.code}). Confira a chave em GEMINI_API_KEY. Detalhe: {e.message}")
+        else:
+            print(f"❌ Erro da API ({e.code}): {e.message}")
         return None
-    except anthropic.RateLimitError:
-        historico.pop()
-        print("❌ Limite de uso da API atingido. Tente de novo em alguns segundos.")
+    except errors.ServerError as e:
+        print(f"❌ O servidor do Gemini falhou ({e.code}). Tente de novo.")
         return None
-    except anthropic.APIStatusError as e:
-        historico.pop()
-        print(f"❌ Erro da API ({e.status_code}): {e.message}")
-        return None
-    except anthropic.APIConnectionError:
-        historico.pop()
-        print("❌ Sem conexão com a API. Verifique a internet.")
+    except Exception as e:  # sem internet, tempo esgotado etc.
+        print(f"❌ Não consegui falar com o Gemini ({type(e).__name__}). Verifique a internet.")
         return None
 
-    if resp.stop_reason == "refusal":
-        historico.pop()
-        return "Desculpe, não posso ajudar com isso."
-
-    # Guarda a resposta completa no histórico para o Pixel lembrar da conversa
-    historico.append({"role": "assistant", "content": resp.content})
-    return "".join(b.text for b in resp.content if b.type == "text").strip()
+    if not resp.text:  # resposta bloqueada pelos filtros de segurança
+        return "Desculpe, não consigo responder isso."
+    return resp.text.strip()
 
 
 def falar(voz, texto, saida):
@@ -146,8 +133,11 @@ def main():
     print("Carregando modelos (pode demorar na primeira vez)...")
     whisper = WhisperModel(WHISPER_MODELO, device="auto", compute_type="int8")
     voz = carregar_voz()
-    client = anthropic.Anthropic()  # lê a chave da variável ANTHROPIC_API_KEY
-    historico = []
+    client = genai.Client()  # lê a chave da variável GEMINI_API_KEY
+    chat = client.chats.create(
+        model=MODELO_GEMINI,
+        config=types.GenerateContentConfig(system_instruction=SYSTEM),
+    )
 
     print("\n🤖 Pixel pronto! Aperte Enter para falar, ou digite 'sair' e Enter para encerrar.\n")
     while True:
@@ -165,7 +155,7 @@ def main():
             continue
         print(f"🧑 Você: {texto}")
 
-        resposta = perguntar(client, historico, texto)
+        resposta = perguntar(chat, texto)
         if not resposta:
             continue
         print(f"🤖 Pixel: {resposta}\n")

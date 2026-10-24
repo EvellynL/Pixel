@@ -7,13 +7,13 @@ Programa em Python que roda no **PC**. Você fala no microfone do fone, a inteli
 ## Como funciona
 
 ```
-🎤 fone → faster-whisper (fala → texto, no PC) → Claude (resposta) → Piper (texto → fala, no PC) → 🔊 fone
+🎤 fone → faster-whisper (fala → texto, no PC) → Gemini (resposta) → Piper (texto → fala, no PC) → 🔊 fone
 ```
 
 | Etapa | Biblioteca | Onde roda |
 |---|---|---|
 | Fala → texto | [faster-whisper](https://github.com/SYSTRAN/faster-whisper), modelo `small` | No PC, sem internet |
-| Resposta | [Claude](https://docs.claude.com) (`claude-opus-5-5`) | Na nuvem (precisa de internet e de uma chave da API) |
+| Resposta | [Gemini](https://ai.google.dev) (`gemini-flash-latest`) | Na nuvem (precisa de internet e de uma chave **gratuita**) |
 | Texto → fala | [Piper](https://github.com/OHF-Voice/piper1-gpl), voz `pt_BR-faber-medium` | No PC, sem internet |
 
 O Pixel lembra do que foi dito enquanto o programa estiver aberto.
@@ -34,18 +34,20 @@ pip install -r requirements.txt
 
 > No Linux, instale também o PortAudio: `sudo apt install libportaudio2`. No Windows e no macOS ele já vem com o `sounddevice`.
 
-### Chave da API do Claude
+### Chave gratuita do Gemini
 
-Crie uma chave em [console.anthropic.com](https://console.anthropic.com) e salve na variável de ambiente `ANTHROPIC_API_KEY`:
+1. Entre em [aistudio.google.com/apikey](https://aistudio.google.com/apikey) com a sua conta Google.
+2. Clique em **Create API key** e copie a chave. Não precisa cadastrar cartão.
+3. Salve a chave na variável de ambiente `GEMINI_API_KEY`:
 
 ```bash
 # Windows (PowerShell) - depois feche e abra o terminal de novo
-setx ANTHROPIC_API_KEY "sua-chave-aqui"
+setx GEMINI_API_KEY "sua-chave-aqui"
 # Linux / macOS
-export ANTHROPIC_API_KEY="sua-chave-aqui"
+export GEMINI_API_KEY="sua-chave-aqui"
 ```
 
-O uso da API é pago por quantidade de texto. Respostas curtas como as do Pixel custam pouco.
+> O plano gratuito tem um limite de pedidos por minuto e por dia. Para uma conversa com o Pixel ele costuma sobrar; se passar, o programa avisa e é só esperar um pouco. No plano gratuito, o Google pode usar as conversas para melhorar os produtos dele, então evite falar informações pessoais sensíveis.
 
 ## Usando
 
@@ -84,4 +86,4 @@ No topo de `assistente_voz.py`:
 | `WHISPER_MODELO` | `base` é mais rápido; `medium` entende melhor, mas é mais lento. Com placa de vídeo NVIDIA, o Whisper usa a GPU sozinho |
 | `VOZ_PIPER` | Outra voz em português, ex.: `pt_BR-cadu-medium` |
 | `SYSTEM` | A personalidade do Pixel e como ele responde |
-| `ESFORCO` | `low` responde mais rápido; `medium` pensa mais antes de responder |
+| `MODELO_GEMINI` | O modelo do Gemini. `gemini-flash-latest` sempre aponta para o Flash mais recente |
