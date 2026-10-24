@@ -1,0 +1,87 @@
+# 🖥️ PC: assistente de voz do Pixel
+
+Programa em Python que roda no **PC**. Você fala no microfone do fone, a inteligência artificial entende e responde com voz. O processamento da fala fica no PC porque o Raspberry Pi tem hardware limitado.
+
+> Por enquanto é só a conversa por voz. A integração com o Raspberry (expressões sincronizadas, status de conexão), o pomodoro e os lembretes vêm depois.
+
+## Como funciona
+
+```
+🎤 fone → faster-whisper (fala → texto, no PC) → Claude (resposta) → Piper (texto → fala, no PC) → 🔊 fone
+```
+
+| Etapa | Biblioteca | Onde roda |
+|---|---|---|
+| Fala → texto | [faster-whisper](https://github.com/SYSTRAN/faster-whisper), modelo `small` | No PC, sem internet |
+| Resposta | [Claude](https://docs.claude.com) (`claude-opus-5-5`) | Na nuvem (precisa de internet e de uma chave da API) |
+| Texto → fala | [Piper](https://github.com/OHF-Voice/piper1-gpl), voz `pt_BR-faber-medium` | No PC, sem internet |
+
+O Pixel lembra do que foi dito enquanto o programa estiver aberto.
+
+## Instalação
+
+Precisa do **Python 3.10 ou mais novo**. Dentro desta pasta (`programacao/pc`):
+
+```bash
+python -m venv .venv
+# Windows:
+.venv\Scripts\activate
+# Linux / macOS:
+source .venv/bin/activate
+
+pip install -r requirements.txt
+```
+
+> No Linux, instale também o PortAudio: `sudo apt install libportaudio2`. No Windows e no macOS ele já vem com o `sounddevice`.
+
+### Chave da API do Claude
+
+Crie uma chave em [console.anthropic.com](https://console.anthropic.com) e salve na variável de ambiente `ANTHROPIC_API_KEY`:
+
+```bash
+# Windows (PowerShell) - depois feche e abra o terminal de novo
+setx ANTHROPIC_API_KEY "sua-chave-aqui"
+# Linux / macOS
+export ANTHROPIC_API_KEY="sua-chave-aqui"
+```
+
+O uso da API é pago por quantidade de texto. Respostas curtas como as do Pixel custam pouco.
+
+## Usando
+
+```bash
+python assistente_voz.py
+```
+
+1. Aperte **Enter** para começar a falar.
+2. Fale e aperte **Enter** de novo para terminar.
+3. O Pixel mostra o que entendeu, escreve a resposta e fala.
+
+Digite `sair` e Enter para encerrar.
+
+Na **primeira execução**, o programa baixa o modelo do Whisper (~500 MB) e a voz do Piper (~60 MB). Depois disso, essas duas etapas funcionam sem internet. A voz fica na pasta `modelos/`, que não vai para o Git.
+
+### Usando o microfone e o som do fone
+
+Se o programa não pegar o fone sozinho, veja o número de cada dispositivo:
+
+```bash
+python assistente_voz.py --listar-dispositivos
+```
+
+E escolha o microfone (`--mic`) e a saída de som (`--saida`) pelo número:
+
+```bash
+python assistente_voz.py --mic 1 --saida 4
+```
+
+## Ajustes
+
+No topo de `assistente_voz.py`:
+
+| Configuração | O que muda |
+|---|---|
+| `WHISPER_MODELO` | `base` é mais rápido; `medium` entende melhor, mas é mais lento. Com placa de vídeo NVIDIA, o Whisper usa a GPU sozinho |
+| `VOZ_PIPER` | Outra voz em português, ex.: `pt_BR-cadu-medium` |
+| `SYSTEM` | A personalidade do Pixel e como ele responde |
+| `ESFORCO` | `low` responde mais rápido; `medium` pensa mais antes de responder |

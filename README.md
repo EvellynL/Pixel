@@ -175,7 +175,8 @@ Um dos objetivos centrais do Pixel é incorporar **inteligência artificial**, p
 Pixel/
 ├── programacao/
 │   ├── raspberry/ # Código do Raspberry Pi 4 (expressões, MQTT, IA)
-│   └── esp32/     # Firmware do ESP32 (sensores e MQTT)
+│   ├── esp32/     # Firmware do ESP32 (sensores e MQTT)
+│   └── pc/        # Assistente de voz que roda no PC (fala → IA → voz)
 ├── eletronica/    # Esquemáticos, pinagens, lista de componentes e diagramas de ligação
 ├── mecanica/      # Modelos 3D, desenhos técnicos e estudos da estrutura do robô
 ├── LICENSE
