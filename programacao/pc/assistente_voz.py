@@ -10,6 +10,7 @@ Uso:
     python assistente_voz.py --mic 3 --saida 5   # escolhe o fone pelo número
 """
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -129,6 +130,16 @@ def main():
     if args.listar_dispositivos:
         print(sd.query_devices())
         return
+
+    # Confere a chave antes de carregar os modelos, que demoram
+    if not (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")):
+        print(
+            "❌ Chave do Gemini não encontrada na variável GEMINI_API_KEY.\n"
+            "   Para usar só neste terminal (PowerShell):  $env:GEMINI_API_KEY = \"sua-chave\"\n"
+            "   Para salvar de vez:  setx GEMINI_API_KEY \"sua-chave\"  e depois feche e abra\n"
+            "   o VS Code (ou o terminal) de novo."
+        )
+        sys.exit(1)
 
     print("Carregando modelos (pode demorar na primeira vez)...")
     whisper = WhisperModel(WHISPER_MODELO, device="auto", compute_type="int8")

@@ -47,6 +47,8 @@ setx GEMINI_API_KEY "sua-chave-aqui"
 export GEMINI_API_KEY="sua-chave-aqui"
 ```
 
+> **Usando o terminal do VS Code?** Depois do `setx`, feche e abra o **VS Code inteiro**, não só o terminal. Para conferir, rode `echo $env:GEMINI_API_KEY`: a chave deve aparecer. Para testar na hora, sem reiniciar, use `$env:GEMINI_API_KEY = "sua-chave-aqui"`, que vale só para aquele terminal.
+
 > O plano gratuito tem um limite de pedidos por minuto e por dia. Para uma conversa com o Pixel ele costuma sobrar; se passar, o programa avisa e é só esperar um pouco. No plano gratuito, o Google pode usar as conversas para melhorar os produtos dele, então evite falar informações pessoais sensíveis.
 
 ## Usando
