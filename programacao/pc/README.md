@@ -85,7 +85,13 @@ No topo de `assistente_voz.py`:
 
 | Configuração | O que muda |
 |---|---|
-| `WHISPER_MODELO` | `base` é mais rápido; `medium` entende melhor, mas é mais lento. Com placa de vídeo NVIDIA, o Whisper usa a GPU sozinho |
+| `WHISPER_MODELO` | `base` é mais rápido; `medium` entende melhor, mas é mais lento |
 | `VOZ_PIPER` | Outra voz em português, ex.: `pt_BR-cadu-medium` |
 | `SYSTEM` | A personalidade do Pixel e como ele responde |
 | `MODELO_GEMINI` | O modelo do Gemini. `gemini-flash-latest` sempre aponta para o Flash mais recente |
+
+## Placa de vídeo NVIDIA (opcional)
+
+Se o PC tiver uma GPU NVIDIA, o programa tenta usá-la para transcrever mais rápido. Para isso funcionar, a GPU precisa das bibliotecas **cuBLAS e cuDNN 9 para CUDA 12**. Sem elas, aparece o aviso `GPU indisponível (... cublas64_12.dll ...)` e o programa usa o processador sozinho. Ele continua funcionando, só um pouco mais devagar.
+
+Para ativar a GPU no Windows, siga a seção de GPU do [README do faster-whisper](https://github.com/SYSTRAN/faster-whisper#gpu): basta baixar as DLLs indicadas lá e colocá-las numa pasta que esteja no `PATH`.

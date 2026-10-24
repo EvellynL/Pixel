@@ -79,6 +79,21 @@ def reamostrar(audio, taxa_origem, taxa_destino):
     return np.interp(x_destino, x_origem, audio).astype(np.float32)
 
 
+def carregar_whisper():
+    """Usa a GPU NVIDIA se ela funcionar; senão, usa o processador.
+
+    O teste é feito já na carga porque, sem as bibliotecas CUDA (cuBLAS/cuDNN),
+    o erro só aparece na primeira transcrição."""
+    try:
+        whisper = WhisperModel(WHISPER_MODELO, device="auto", compute_type="int8")
+        teste = np.zeros(WHISPER_TAXA, dtype=np.float32)  # 1 s de silêncio
+        list(whisper.transcribe(teste, language="pt")[0])
+        return whisper
+    except RuntimeError as e:
+        print(f"⚠️  GPU indisponível ({e}). Usando o processador.")
+        return WhisperModel(WHISPER_MODELO, device="cpu", compute_type="int8")
+
+
 def transcrever(whisper, audio):
     # vad_filter remove os trechos de silêncio antes de transcrever
     segmentos, _ = whisper.transcribe(audio, language="pt", vad_filter=True)
@@ -142,7 +157,7 @@ def main():
         sys.exit(1)
 
     print("Carregando modelos (pode demorar na primeira vez)...")
-    whisper = WhisperModel(WHISPER_MODELO, device="auto", compute_type="int8")
+    whisper = carregar_whisper()
     voz = carregar_voz()
     client = genai.Client()  # lê a chave da variável GEMINI_API_KEY
     chat = client.chats.create(
