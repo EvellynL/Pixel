@@ -26,6 +26,8 @@ from piper.download_voices import download_voice
 # Apelido do Google que sempre aponta para o modelo Flash mais recente
 # (rápido e disponível no plano gratuito)
 MODELO_GEMINI = "gemini-flash-latest"
+# Usado se o principal continuar falhando (ex.: 503, servidor sobrecarregado)
+MODELO_RESERVA = "gemini-flash-lite-latest"
 
 WHISPER_MODELO = "small"  # tiny, base, small, medium... (maior = entende melhor, mais lento)
 WHISPER_TAXA = 16000  # o Whisper trabalha com áudio a 16 kHz
@@ -100,29 +102,52 @@ def transcrever(whisper, audio):
     return " ".join(s.text.strip() for s in segmentos).strip()
 
 
-def perguntar(chat, texto):
-    """Envia a fala ao Gemini e devolve o texto da resposta (ou None se falhar).
-    O objeto `chat` guarda o histórico da conversa sozinho."""
-    try:
-        resp = chat.send_message(texto)
-    except errors.ClientError as e:
-        if e.code == 429:
-            print("❌ Limite do plano gratuito atingido. Espere um pouco e tente de novo.")
-        elif e.code in (400, 401, 403):
-            print(f"❌ Erro da API ({e.code}). Confira a chave em GEMINI_API_KEY. Detalhe: {e.message}")
-        else:
-            print(f"❌ Erro da API ({e.code}): {e.message}")
-        return None
-    except errors.ServerError as e:
-        print(f"❌ O servidor do Gemini falhou ({e.code}). Tente de novo.")
-        return None
-    except Exception as e:  # sem internet, tempo esgotado etc.
-        print(f"❌ Não consegui falar com o Gemini ({type(e).__name__}). Verifique a internet.")
-        return None
+class Conversa:
+    """Conversa com o Gemini. Troca para o modelo reserva, mantendo o
+    histórico, quando o servidor do modelo principal continua falhando."""
 
-    if not resp.text:  # resposta bloqueada pelos filtros de segurança
-        return "Desculpe, não consigo responder isso."
-    return resp.text.strip()
+    def __init__(self, client):
+        self.client = client
+        self.modelo = MODELO_GEMINI
+        self.chat = self._novo_chat()
+
+    def _novo_chat(self, historico=None):
+        return self.client.chats.create(
+            model=self.modelo,
+            config=types.GenerateContentConfig(system_instruction=SYSTEM),
+            history=historico,
+        )
+
+    def _trocar_para_reserva(self):
+        self.modelo = MODELO_RESERVA
+        self.chat = self._novo_chat(self.chat.get_history())
+
+    def perguntar(self, texto):
+        """Devolve o texto da resposta, ou None se não der para responder."""
+        try:
+            resp = self.chat.send_message(texto)
+        except errors.ServerError as e:
+            if self.modelo == MODELO_RESERVA:
+                print(f"❌ O servidor do Gemini falhou ({e.code}): {e.message}. Tente de novo daqui a pouco.")
+                return None
+            print(f"⚠️  {MODELO_GEMINI} indisponível ({e.code}). Trocando para {MODELO_RESERVA}...")
+            self._trocar_para_reserva()
+            return self.perguntar(texto)
+        except errors.ClientError as e:
+            if e.code == 429:
+                print("❌ Limite do plano gratuito atingido. Espere um pouco e tente de novo.")
+            elif e.code in (400, 401, 403):
+                print(f"❌ Erro da API ({e.code}). Confira a chave em GEMINI_API_KEY. Detalhe: {e.message}")
+            else:
+                print(f"❌ Erro da API ({e.code}): {e.message}")
+            return None
+        except Exception as e:  # sem internet, tempo esgotado etc.
+            print(f"❌ Não consegui falar com o Gemini ({type(e).__name__}). Verifique a internet.")
+            return None
+
+        if not resp.text:  # resposta bloqueada pelos filtros de segurança
+            return "Desculpe, não consigo responder isso."
+        return resp.text.strip()
 
 
 def falar(voz, texto, saida):
@@ -159,11 +184,12 @@ def main():
     print("Carregando modelos (pode demorar na primeira vez)...")
     whisper = carregar_whisper()
     voz = carregar_voz()
-    client = genai.Client()  # lê a chave da variável GEMINI_API_KEY
-    chat = client.chats.create(
-        model=MODELO_GEMINI,
-        config=types.GenerateContentConfig(system_instruction=SYSTEM),
-    )
+    # Lê a chave da variável GEMINI_API_KEY. Erros temporários (503 servidor
+    # sobrecarregado, 429, 500...) são tentados de novo sozinhos algumas vezes.
+    client = genai.Client(http_options=types.HttpOptions(
+        retry_options=types.HttpRetryOptions(attempts=4, initial_delay=1, max_delay=8),
+    ))
+    conversa = Conversa(client)
 
     print("\n🤖 Pixel pronto! Aperte Enter para falar, ou digite 'sair' e Enter para encerrar.\n")
     while True:
@@ -181,7 +207,7 @@ def main():
             continue
         print(f"🧑 Você: {texto}")
 
-        resposta = perguntar(chat, texto)
+        resposta = conversa.perguntar(texto)
         if not resposta:
             continue
         print(f"🤖 Pixel: {resposta}\n")

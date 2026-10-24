@@ -89,6 +89,7 @@ No topo de `assistente_voz.py`:
 | `VOZ_PIPER` | Outra voz em português, ex.: `pt_BR-cadu-medium` |
 | `SYSTEM` | A personalidade do Pixel e como ele responde |
 | `MODELO_GEMINI` | O modelo do Gemini. `gemini-flash-latest` sempre aponta para o Flash mais recente |
+| `MODELO_RESERVA` | Modelo usado quando o principal continua fora do ar (ex.: erro 503, servidor sobrecarregado). A conversa continua com o mesmo histórico |
 
 ## Placa de vídeo NVIDIA (opcional)
 
